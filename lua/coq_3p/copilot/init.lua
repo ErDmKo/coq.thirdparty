@@ -34,15 +34,18 @@ return function(spec)
       col = {col, "number"},
       suggestion = {suggestion, "table"}
     }
+    local label = suggestion.insertText or suggestion.displayText
+    local new_text = suggestion.insertText or suggestion.text
+    local position = {line = row, character = col} or suggestion.position
+    vim.print(suggestion)
+
     vim.validate {
-      position = {suggestion.position, "table"},
-      label = {suggestion.displayText, "string"},
-      new_text = {suggestion.text, "string"},
+      position = {position, "table"},
+      label = {label, "string"},
+      new_text = {new_text, "string"},
       range = {suggestion.range, "table"}
     }
-    local cop_row, cop_col =
-      suggestion.position.line,
-      suggestion.position.character
+    local cop_row, cop_col = position.line, position.character
     vim.validate {cop_row = {cop_row, "number"}, cop_col = {cop_col, "number"}}
 
     local same_row = cop_row == row
@@ -90,8 +93,6 @@ return function(spec)
         }
       end)()
 
-      local label = suggestion.displayText
-
       local filterText = (function()
         if col_diff > 0 then
           return string.sub(label, col_diff + 1)
@@ -104,9 +105,9 @@ return function(spec)
         preselect = true,
         label = label,
         filterText = filterText,
-        documentation = suggestion.displayText,
+        documentation = label,
         textEdit = {
-          newText = suggestion.text,
+          newText = new_text,
           range = range
         },
         command = {
