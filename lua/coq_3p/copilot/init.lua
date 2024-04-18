@@ -28,7 +28,7 @@ return function(spec)
     {nowait = true, silent = true, expr = true}
   )
 
-  local maybe_item = function(row, col, suggestion)
+  local maybe_item = function(row, col, suggestion, maybe_position)
     vim.validate {
       row = {row, "number"},
       col = {col, "number"},
@@ -36,8 +36,7 @@ return function(spec)
     }
     local label = suggestion.insertText or suggestion.displayText
     local new_text = suggestion.insertText or suggestion.text
-    local position = {line = row, character = col} or suggestion.position
-    vim.print(suggestion)
+    local position = suggestion.position or maybe_position
 
     vim.validate {
       position = {position, "table"},
@@ -125,6 +124,16 @@ return function(spec)
     if copilot then
       vim.validate {copilot = {copilot, "table"}}
       local maybe_suggestions = copilot.suggestions
+      local maybe_position = (function()
+        local params = copilot.params
+        if params then
+          vim.validate {params = {params, "table"}}
+          return params.position
+        else
+          return nil
+        end
+      end)()
+
       if maybe_suggestions then
         vim.validate {maybe_suggestions = {maybe_suggestions, "table"}}
         local uuids = {}
@@ -136,19 +145,21 @@ return function(spec)
           end
         end
         local uid = table.concat(uuids, "")
-        return maybe_suggestions, uid
+        return maybe_suggestions, uid, maybe_position
       end
     else
-      return nil, ""
+      return nil, "", nil
     end
   end
 
   local items = (function()
     local suggestions = {}
+    local position = {}
     local uid = ""
     local function loopie()
-      local maybe_suggestions, new_uid = pull()
+      local maybe_suggestions, new_uid, maybe_position = pull()
       suggestions = maybe_suggestions or suggestions
+      position = maybe_position or position
       if uid ~= new_uid and #suggestions >= 1 then
         utils.run_completefunc()
       end
@@ -161,7 +172,7 @@ return function(spec)
       local items = {}
       suggestions = pull() or suggestions
       for _, suggestion in pairs(suggestions) do
-        local item = maybe_item(row, col, suggestion)
+        local item = maybe_item(row, col, suggestion, position)
         if item then
           table.insert(items, item)
         end
