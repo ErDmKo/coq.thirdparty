@@ -36,6 +36,7 @@ return function(spec)
     }
     local label = suggestion.insertText or suggestion.displayText
     local new_text = suggestion.insertText or suggestion.text
+    local suggestion_filter = suggestion.filterText
     local position = suggestion.position or maybe_position
 
     vim.validate {
@@ -93,7 +94,9 @@ return function(spec)
       end)()
 
       local filterText = (function()
-        if col_diff > 0 then
+        if suggestion_filter then
+          return suggestion_filter
+        elseif col_diff > 0 then
           return string.sub(label, col_diff + 1)
         else
           return label
