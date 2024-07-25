@@ -43,7 +43,8 @@ return function(spec)
       position = {position, "table"},
       label = {label, "string"},
       new_text = {new_text, "string"},
-      range = {suggestion.range, "table"}
+      range = {suggestion.range, "table"},
+      filter_text = {suggestion_filter, "string", true}
     }
     local cop_row, cop_col = position.line, position.character
     vim.validate {cop_row = {cop_row, "number"}, cop_col = {cop_col, "number"}}
