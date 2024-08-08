@@ -153,14 +153,9 @@ return function(spec)
     end)()
 
     local edit = {
-      preselect = true,
-      label = label,
+      insertText = text,
       filterText = filterText,
-      documentation = label,
-      textEdit = {
-        newText = text,
-        range = range
-      },
+      range = range,
       command = {
         title = "COP",
         command = "#COP"
@@ -238,7 +233,6 @@ return function(spec)
 
     callback(
       {
-        isIncomplete = true,
         items = items(row, col, args.line)
       }
     )
@@ -248,5 +242,5 @@ return function(spec)
       print("#COD")
     end
   end
-  return fn, {exec = exec}
+  return nil, {exec = exec, ln = fn}
 end

@@ -105,14 +105,9 @@ return function(spec)
       end)()
 
       local item = {
-        preselect = true,
-        label = label,
+        insertText = new_text,
         filterText = filterText,
-        documentation = label,
-        textEdit = {
-          newText = new_text,
-          range = range
-        },
+        range = range,
         command = {
           title = "COP",
           command = "#COP"
@@ -190,7 +185,6 @@ return function(spec)
 
     callback(
       {
-        isIncomplete = true,
         items = items(row, u16_col)
       }
     )
@@ -201,5 +195,5 @@ return function(spec)
       print("#COP")
     end
   end
-  return fn, {offset_encoding = "utf-16", exec = exec}
+  return nil, {offset_encoding = "utf-16", exec = exec, ln = fn}
 end
