@@ -28,164 +28,46 @@ return function(spec)
     {nowait = true, silent = true, expr = true}
   )
 
-  local maybe_item = function(row, col, suggestion, maybe_position)
-    vim.validate {
-      row = {row, "number"},
-      col = {col, "number"},
-      suggestion = {suggestion, "table"}
-    }
-    local label = suggestion.insertText or suggestion.displayText
-    local new_text = suggestion.insertText or suggestion.text
-    local suggestion_filter = suggestion.filterText
-    local position = suggestion.position or maybe_position
-
-    vim.validate {
-      position = {position, "table"},
-      label = {label, "string"},
-      new_text = {new_text, "string"},
-      range = {suggestion.range, "table"},
-      filter_text = {suggestion_filter, "string", true}
-    }
-    local cop_row, cop_col = position.line, position.character
-    vim.validate {cop_row = {cop_row, "number"}, cop_col = {cop_col, "number"}}
-
-    local same_row = cop_row == row
-    local col_diff = col - cop_col
-    local almost_same_col = math.abs(col_diff) <= utils.MAX_COL_DIFF
-
-    if not (same_row and almost_same_col) then
-      return nil
-    else
-      local range =
-        (function()
-        local bin = suggestion.range.start
-        local fin = suggestion.range["end"]
-
-        vim.validate {
-          start = {bin, "table"},
-          ["end"] = {fin, "table"}
-        }
-        vim.validate {
-          end_character = {fin.character, "number"},
-          end_line = {fin.line, "number"},
-          start_character = {bin.character, "number"},
-          start_line = {bin.line, "number"}
-        }
-
-        local tran = function(pos, lhs)
-          if pos.line ~= row then
-            return bin
-          else
-            local character = (function()
-              if pos.character >= col or (lhs and pos.character == 0) then
-                return pos.character
-              else
-                -- TODO: Calculate the diff in u16
-                return pos.character + col_diff
-              end
-            end)()
-            return {line = pos.line, character = character}
-          end
-        end
-
-        return {
-          start = tran(bin, true),
-          ["end"] = tran(fin, false)
-        }
-      end)()
-
-      local filterText = (function()
-        if suggestion_filter then
-          return suggestion_filter
-        elseif col_diff > 0 then
-          return string.sub(label, col_diff + 1)
-        else
-          return label
-        end
-      end)()
-
-      local item = {
-        insertText = new_text,
-        filterText = filterText,
-        range = range,
-        command = {
-          title = "COP",
-          command = "#COP"
-        }
-      }
-      return item
-    end
-  end
-
   local pull = function()
     local copilot = vim.b._copilot
 
     if copilot then
       vim.validate {copilot = {copilot, "table"}}
-      local maybe_suggestions = copilot.suggestions
-      local maybe_position = (function()
-        local params = copilot.params
-        if params then
-          vim.validate {params = {params, "table"}}
-          return params.position
-        else
-          return nil
-        end
-      end)()
-
-      if maybe_suggestions then
-        vim.validate {maybe_suggestions = {maybe_suggestions, "table"}}
-        local uuids = {}
-        for _, item in ipairs(maybe_suggestions) do
-          local uuid = item.uuid
-          if uuid then
-            vim.validate {uuid = {uuid, "string"}}
-            table.insert(uuids, uuid)
-          end
-        end
-        local uid = table.concat(uuids, "")
-        return maybe_suggestions, uid, maybe_position
-      end
+      local suggestions = copilot.suggestions
+      vim.validate {suggestions = {suggestions, "table", true}}
+      return suggestions
     else
-      return nil, "", nil
+      return nil
     end
   end
 
-  local items = (function()
-    local suggestions = {}
-    local position = {}
-    local uid = ""
-    local function loopie()
-      local maybe_suggestions, new_uid, maybe_position = pull()
-      suggestions = maybe_suggestions or suggestions
-      position = maybe_position or position
-      if uid ~= new_uid and #suggestions >= 1 then
-        utils.run_completefunc()
-      end
-      uid = new_uid
-      vim.defer_fn(loopie, 88)
+  local items = function()
+    local items = {}
+    local suggestions = pull() or {}
+    for _, item in pairs(suggestions) do
+      table.insert(
+        items,
+        vim.tbl_deep_extend(
+          "force",
+          {
+            item,
+            {
+              command = {
+                title = "COP",
+                command = "#COP"
+              }
+            }
+          }
+        )
+      )
     end
-    loopie()
-
-    return function(row, col)
-      local items = {}
-      suggestions = pull() or suggestions
-      for _, suggestion in pairs(suggestions) do
-        local item = maybe_item(row, col, suggestion, position)
-        if item then
-          table.insert(items, item)
-        end
-      end
-      return items
-    end
-  end)()
+    return items
+  end
 
   local fn = function(args, callback)
-    local row, _, u16_col = unpack(args.pos)
-
     callback(
       {
-        items = items(row, u16_col)
+        items = items()
       }
     )
   end
