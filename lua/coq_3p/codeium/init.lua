@@ -168,61 +168,33 @@ return function(spec)
   local pull = function()
     local comp = vim.b._codeium_completions or {}
     local acc = comp.items or {}
-
     vim.validate {acc = {acc, "table", nil}}
-
-    local uuids = {}
-    for _, item in ipairs(acc or {}) do
-      local uuid = item.completionId
-      if uuid then
-        vim.validate {uuid = {uuid, "string"}}
-        table.insert(uuids, uuid)
-      end
-    end
-
-    local id = table.concat(uuids, "")
-    return acc, id
+    return acc
   end
 
-  local items =
-    (function()
-    local uid = ""
-    local suggestions = {}
+  local items = function(row, col, start_line)
+    vim.validate {
+      row = {row, "number"},
+      col = {col, "number"},
+      start_line = {start_line, "string"}
+    }
 
-    local function loopie()
-      local maybe_suggestions, new_uid = pull()
-      suggestions = maybe_suggestions or suggestions
-      if uid ~= new_uid and #suggestions >= 1 then
-        utils.run_completefunc()
-      end
-      uid = new_uid
-      vim.defer_fn(loopie, 88)
-    end
-    loopie()
+    local buf = vim.api.nvim_get_current_buf()
+    local row_offset_lo = vim.api.nvim_buf_get_offset(buf, row)
+    local suggestions = pull()
 
-    return function(row, col, start_line)
-      vim.validate {
-        row = {row, "number"},
-        col = {col, "number"},
-        start_line = {start_line, "string"}
-      }
-
-      local buf = vim.api.nvim_get_current_buf()
-      local row_offset_lo = vim.api.nvim_buf_get_offset(buf, row)
-
-      local acc = {}
-      for _, item in pairs(suggestions) do
-        local xform = trans(row, item)
-        if xform then
-          local edit = parse(buf, start_line, row, col, row_offset_lo, xform)
-          if edit then
-            table.insert(acc, edit)
-          end
+    local acc = {}
+    for _, item in pairs(suggestions) do
+      local xform = trans(row, item)
+      if xform then
+        local edit = parse(buf, start_line, row, col, row_offset_lo, xform)
+        if edit then
+          table.insert(acc, edit)
         end
       end
-      return acc
     end
-  end)()
+    return acc
+  end
 
   -- vim.g.codeium_manual = true
 
