@@ -49,13 +49,11 @@ return function(spec)
         items,
         vim.tbl_deep_extend(
           "force",
+          item,
           {
-            item,
-            {
-              command = {
-                title = "COP",
-                command = "#COP"
-              }
+            command = {
+              title = "COP",
+              command = "#COP"
             }
           }
         )
